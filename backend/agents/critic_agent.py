@@ -1,9 +1,13 @@
 """Critic Agent: classifies severity of each finding (zero-shot)."""
+import logging
+
 from backend.llm.router import call_llm
 from backend.agents.state import AgentState
 
+logger = logging.getLogger(__name__)
 
-CRITIC_SYSTEM_PROMPT = """Eres un clasificador de riesgos documentales. Para cada hallazgo detectado, debes asignar una severidad y un score de riesgo.
+
+CRITIC_SYSTEM_PROMPT = f"""Eres un clasificador de riesgos documentales. Para cada hallazgo detectado, debes asignar una severidad y un score de riesgo.
 
 Clasifica cada hallazgo como:
 - "high": riesgo significativo, probable incumplimiento regulatorio o pérdida financiera material
@@ -21,13 +25,17 @@ Reglas:
 - Omisión de campos obligatorios en factura -> medium
 - No más del 50% de los hallazgos deben ser "high"
 
+IMPORTANTE: El campo "type" de cada objeto DEBE ser EXACTAMENTE el mismo
+que aparece en el hallazgo de entrada. No lo modifiques, no lo traduzcas,
+no le agregues prefijos ni sufijos. Conservalo literal.
+
 Responde SOLO con un JSON array de objetos:
 [
-  {
-    "type": "tipo_del_hallazgo",
+  {{
+    "type": "type_exacto_del_hallazgo",
     "severity": "high|medium|low",
     "risk_score": 0.0-1.0
-  }
+  }}
 ]"""
 
 
@@ -57,18 +65,22 @@ async def critic_agent(state: AgentState) -> dict:
         return {"errors": [f"Critic LLM call failed: {e}"]}
 
     # Parse JSON array from response
-    import json
+    import json, re
     classified = []
     try:
         json_str = response.strip()
-        if "```json" in json_str:
-            json_str = json_str.split("```json")[1].split("```")[0].strip()
-        elif "```" in json_str:
-            json_str = json_str.split("```")[1].split("```")[0].strip()
+        match = re.search(r'\[.*\]', json_str, re.DOTALL)
+        if match:
+            json_str = match.group(0)
         classified = json.loads(json_str)
         if not isinstance(classified, list):
             classified = []
+        logger.info("critic parsed response for doc_id=%s: %s", doc_id, classified)
     except (json.JSONDecodeError, IndexError) as e:
+        logger.error(
+            "critic JSON parse FAILED for doc_id=%s. Raw response (first 2000 chars): %r",
+            doc_id, response[:2000],
+        )
         return {"errors": [f"Failed to parse critic output: {e}"]}
 
     # Merge severity back into findings

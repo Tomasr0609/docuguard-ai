@@ -48,15 +48,13 @@ async def extractor_agent(state: AgentState) -> dict:
         return {"errors": [f"Extractor LLM call failed: {e}"]}
 
     # Parse JSON from response
-    import json
+    import json, re
     extracted: Optional[ExtractedInfo] = None
     try:
-        # Find JSON block in response
         json_str = response.strip()
-        if "```json" in json_str:
-            json_str = json_str.split("```json")[1].split("```")[0].strip()
-        elif "```" in json_str:
-            json_str = json_str.split("```")[1].split("```")[0].strip()
+        match = re.search(r'\{.*\}', json_str, re.DOTALL)
+        if match:
+            json_str = match.group(0)
         extracted = json.loads(json_str)
     except (json.JSONDecodeError, IndexError) as e:
         return {"errors": [f"Failed to parse extractor output as JSON: {e}", f"Raw output: {response[:500]}"]}

@@ -1,24 +1,30 @@
 """Verifier Agent: compares document against corpus normativo via RAG."""
 from backend.llm.router import call_llm
 from backend.rag.retriever import retrieve_context
-from backend.agents.state import AgentState
+from backend.agents.state import AgentState, FINDING_TYPE_TAXONOMY
 
+_TAXONOMY_LINE = "\n".join(f"  - {t}" for t in FINDING_TYPE_TAXONOMY)
 
-VERIFIER_SYSTEM_PROMPT = """Eres un verificador de cumplimiento documental. Tu tarea es comparar el texto de un documento contra las cláusulas de referencia (corpus normativo) proporcionadas y detectar desviaciones, riesgos o cláusulas problemáticas.
+VERIFIER_SYSTEM_PROMPT = f"""Eres un verificador de cumplimiento documental. Tu tarea es comparar el texto de un documento contra las cláusulas de referencia (corpus normativo) proporcionadas y detectar desviaciones, riesgos o cláusulas problemáticas.
 
 Para cada hallazgo, debes determinar:
-1. El tipo de hallazgo
+1. El tipo de hallazgo (usa EXACTAMENTE uno de los códigos de la taxonomía obligatoria más abajo)
 2. Una descripción clara de por qué es problemático
 3. El texto exacto del documento que respalda el hallazgo (cita textual)
 4. La cláusula de referencia con la que se compara
 
+=== TAXONOMÍA OBLIGATORIA DE TIPOS DE HALLAZGO ===
+Usá SOLO estos códigos en el campo "type". No inventes códigos nuevos:
+
+{_TAXONOMY_LINE}
+
 Responde SOLO con un JSON array. Cada elemento del array debe tener:
-{
-  "type": "tipo_de_hallazgo",
+{{
+  "type": "código_de_la_taxonomía",
   "description": "descripción del problema",
   "source_snippet": "cita textual del documento",
   "reference_clause": "cláusula de referencia relevante"
-}
+}}
 
 Si no encuentras desviaciones, responde con un array vacío [].
 
@@ -66,14 +72,13 @@ async def verifier_agent(state: AgentState) -> dict:
         return {"errors": [f"Verifier LLM call failed: {e}"]}
 
     # Parse JSON array from response
-    import json
+    import json, re
     findings_raw: list[dict] = []
     try:
         json_str = response.strip()
-        if "```json" in json_str:
-            json_str = json_str.split("```json")[1].split("```")[0].strip()
-        elif "```" in json_str:
-            json_str = json_str.split("```")[1].split("```")[0].strip()
+        match = re.search(r'\[.*\]', json_str, re.DOTALL)
+        if match:
+            json_str = match.group(0)
         findings_raw = json.loads(json_str)
         if not isinstance(findings_raw, list):
             findings_raw = []

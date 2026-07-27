@@ -1,9 +1,12 @@
 """Evaluation harness for DocuGuard AI Lite.
 
 Usage:
-    python eval/run_eval.py                        # structural metrics only (no API key needed)
-    python eval/run_eval.py --full                 # full pipeline + Ragas (requires API key)
-    python eval/run_eval.py --subset 5             # run on first N docs
+    python eval/run_eval.py                        # structural metrics only
+    python eval/run_eval.py --full                 # full pipeline (Ollama local, no API key needed)
+    python eval/run_eval.py --full --subset 5      # run on first N docs
+
+To use Anthropic instead of Ollama, set LLM_PROVIDER=anthropic
+and ANTHROPIC_API_KEY in .env.
 
 Generates a report in eval/results/{timestamp}.md
 """
@@ -71,7 +74,8 @@ def run_structural_eval(subset: Optional[int] = None) -> dict[str, Any]:
     metrics["eval_mode"] = "structural_baseline"
     metrics["note"] = (
         "All scores are 1.0 because this baseline evaluates ground truth against itself. "
-        "To get real metrics, configure ANTHROPIC_API_KEY and run with --full."
+        "To get real metrics, run with --full (Ollama local by default; "
+        "set LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY to use Claude)."
     )
 
     # Analyze distribution
@@ -92,11 +96,21 @@ def run_structural_eval(subset: Optional[int] = None) -> dict[str, Any]:
 
 
 async def run_full_eval(subset: Optional[int] = None) -> dict[str, Any]:
-    """Run the full pipeline + Ragas evaluation. Requires API key."""
-    from backend.config import settings
+    """Run the full pipeline evaluation using the configured LLM provider.
 
-    if not settings.anthropic_api_key or settings.anthropic_api_key == "sk-ant-...":
-        raise ValueError("ANTHROPIC_API_KEY not configured. Run without --full for structural eval.")
+    Uses the same LLM router as the rest of the system (backend/llm/router.py),
+    so it works with Ollama (default, no API key needed) or Anthropic.
+    """
+    from backend.config import settings
+    from backend.llm.router import route as llm_route
+
+    provider = llm_route("eval")
+    if provider == "anthropic":
+        if not settings.anthropic_api_key or settings.anthropic_api_key == "sk-ant-...":
+            raise ValueError(
+                "LLM_PROVIDER=anthropic but ANTHROPIC_API_KEY is not configured. "
+                "Set it in .env or switch to LLM_PROVIDER=ollama for local inference."
+            )
 
     ground_truth = load_ground_truth()
     if subset:
@@ -118,33 +132,51 @@ async def run_full_eval(subset: Optional[int] = None) -> dict[str, Any]:
         dest = UPLOAD_DIR / f"{doc_id}.txt"
         dest.write_bytes(txt_path.read_bytes())
 
-        # Create DB record
+        # Create or reset DB record
         from backend.db.session import async_session_factory
         from backend.db.models import Document, ProcessingStatus
+        from backend.db.models import Finding as FindingModel
+        from sqlalchemy import select, delete
 
         async with async_session_factory() as session:
-            existing = await session.get(Document, doc_id)
-            if not existing:
-                doc = Document(
+            result = await session.execute(
+                select(Document).where(Document.doc_id == doc_id)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                # Clear old findings and reset so the pipeline starts fresh
+                await session.execute(
+                    delete(FindingModel).where(FindingModel.document_id == existing.id)
+                )
+                existing.status = ProcessingStatus.pending
+                existing.extracted_text = None
+                existing.executive_summary = None
+                existing.risk_level = None
+                existing.risk_score = None
+                existing.processing_time_ms = None
+                existing.total_cost_usd = None
+            else:
+                existing = Document(
                     doc_id=doc_id,
                     filename=txt_path.name,
                     file_type="txt",
                     status=ProcessingStatus.pending,
                 )
-                session.add(doc)
-                await session.commit()
+                session.add(existing)
+            await session.commit()
 
         # Run pipeline
         await process_document(doc_id, dest)
 
         # Get results from DB
         async with async_session_factory() as session:
-            doc = await session.get(Document, doc_id)
+            result = await session.execute(
+                select(Document).where(Document.doc_id == doc_id)
+            )
+            doc = result.scalar_one_or_none()
             if doc:
-                from sqlalchemy import select
-                from backend.db.models import Finding
                 result = await session.execute(
-                    select(Finding).where(Finding.document_id == doc_id)
+                    select(FindingModel).where(FindingModel.document_id == doc.id)
                 )
                 findings = result.scalars().all()
                 pipeline_results.append({
@@ -231,7 +263,11 @@ def main() -> None:
                 pass
 
     print(f">>> DocuGuard AI Lite — Evaluation Harness")
-    print(f"    Mode: {'full pipeline' if full else 'structural (no API key needed)'}")
+    if full:
+        from backend.config import settings
+        print(f"    Mode: full pipeline (provider: {settings.llm_provider})")
+    else:
+        print(f"    Mode: structural baseline (no LLM calls)")
     if subset:
         print(f"    Subset: first {subset} documents")
     print()

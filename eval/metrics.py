@@ -6,20 +6,25 @@ without requiring LLM calls. Ragas metrics require an API key.
 from typing import Any
 
 
+def _normalize_type(t: str | None) -> str:
+    """Lowercase and strip whitespace for case-insensitive matching."""
+    return t.strip().lower() if t else ""
+
+
 def compute_finding_recall(
     ground_truth_findings: list[dict],
     detected_findings: list[dict],
 ) -> float:
     """What fraction of expected findings were detected by the pipeline?
 
-    Matching is by finding type. A finding is considered 'detected' if
-    a pipeline finding with the same type exists.
+    Matching is by finding type (case-insensitive). A finding is considered
+    'detected' if a pipeline finding with the same type exists.
     """
     if not ground_truth_findings:
         return 1.0  # no findings to detect = perfect score
 
-    expected_types = {f.get("type") for f in ground_truth_findings if f.get("type")}
-    detected_types = {f.get("type") for f in detected_findings if f.get("type")}
+    expected_types = {_normalize_type(f.get("type")) for f in ground_truth_findings if f.get("type")}
+    detected_types = {_normalize_type(f.get("type")) for f in detected_findings if f.get("type")}
 
     if not expected_types:
         return 1.0
@@ -36,8 +41,8 @@ def compute_finding_precision(
     if not detected_findings:
         return 1.0  # no spurious findings
 
-    expected_types = {f.get("type") for f in ground_truth_findings if f.get("type")}
-    detected_types = {f.get("type") for f in detected_findings if f.get("type")}
+    expected_types = {_normalize_type(f.get("type")) for f in ground_truth_findings if f.get("type")}
+    detected_types = {_normalize_type(f.get("type")) for f in detected_findings if f.get("type")}
 
     if not detected_types:
         return 1.0
@@ -48,8 +53,8 @@ def compute_finding_precision(
 
 def compute_severity_accuracy(ground_truth_findings: list[dict], detected_findings: list[dict]) -> float:
     """Of findings that were correctly detected, what fraction had correct severity?"""
-    gt_by_type = {f.get("type"): f.get("severity") for f in ground_truth_findings if f.get("type")}
-    detected_by_type = {f.get("type"): f.get("severity") for f in detected_findings if f.get("type")}
+    gt_by_type = {_normalize_type(f.get("type")): f.get("severity") for f in ground_truth_findings if f.get("type")}
+    detected_by_type = {_normalize_type(f.get("type")): f.get("severity") for f in detected_findings if f.get("type")}
 
     correct = 0
     total = 0

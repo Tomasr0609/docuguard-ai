@@ -5,6 +5,25 @@ so nodes can write only what they produce.
 """
 from typing import TypedDict, Optional
 
+# Controlled vocabulary for finding types — used by verifier and critic agents.
+# Must match the taxonomy in data/eval/ground_truth.jsonl exactly.
+FINDING_TYPE_TAXONOMY: list[str] = [
+    "amount_inconsistency",
+    "excessive_interest",
+    "missing_jurisdiction",
+    "missing_required_fields",
+    "missing_standard_exclusions",
+    "missing_termination_clause",
+    "missing_termination_notice",
+    "no_cap_liability",
+    "no_data_protection",
+    "overbroad_confidentiality",
+    "penalty_ambiguous",
+    "perpetual_confidentiality",
+    "unfavorable_penalty",
+    "unusual_jurisdiction",
+]
+
 
 class Finding(TypedDict, total=False):
     type: str
