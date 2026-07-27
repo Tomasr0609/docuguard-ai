@@ -1,0 +1,31 @@
+Contrato de Mantenimiento de Infraestructura TI
+Entre InfraServe S.A. y Organización Cliente 3 S.A.
+Fecha: 22 de septiembre de 2025
+
+CLÁUSULA PRIMERA: OBJETO
+Servicios de mantenimiento preventivo y correctivo de infraestructura tecnológica, incluyendo servidores, redes y equipamiento de usuario final.
+
+CLÁUSULA SEGUNDA: PLAZO
+El presente contrato tendrá una duración de 526 días contados desde su firma.
+
+CLÁUSULA TERCERA: PRECIO
+El contratista percibirá por sus servicios la suma de USD 198,682.00 pagaderos de la siguiente forma: 50% a la firma y 50% contra entrega de los entregables.
+
+CLÁUSULA CUARTA: TERMINACIÓN ANTICIPADA
+Cualquiera de las partes podrá resolver el contrato sin causa mediante preaviso escrito de 30 días calendario. En caso de incumplimiento, la parte incumplidora dispondrá de 15 días hábiles para subsanarlo.
+
+CLÁUSULA QUINTA: PENALIZACIONES
+En caso de incumplimiento, la parte incumplidora abonará a la otra una penalización del 10.0% mensual sobre el valor del contrato. Se aplicarán intereses moratorios del 2.0% mensual sobre las sumas adeudadas. La responsabilidad máxima acumulada de cada parte no excederá el 50% del valor del contrato.
+
+CLÁUSULA SEXTA: JURISDICCIÓN
+Las partes se someten a la jurisdicción de los Tribunales Ordinarios de Islas Caimán, renunciando a cualquier otro fuero o jurisdicción.
+
+CLÁUSULA SÉPTIMA: PROTECCIÓN DE DATOS
+Las partes se comprometen a tratar los datos personales conforme a la Ley de Protección de Datos Personales, garantizando el consentimiento, finalidad, proporcionalidad y seguridad de los datos.
+
+CLÁUSULA FINAL: FUERZA MAYOR
+Ninguna parte será responsable por incumplimiento debido a eventos de fuerza mayor debidamente acreditados.
+
+Firmado en Islas Caimán, a los 21 días del mes de abril de 2025.
+
+InfraServe S.A.                                  Organización Cliente 3 S.A.

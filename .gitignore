@@ -1,0 +1,38 @@
+# Environment
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Database
+docuguard.db
+*.sqlite
+*.sqlite3
+
+# ChromaDB (regenerable)
+chroma_db/
+
+# Logs
+logs/
+!logs/.gitkeep
+
+# Dataset (regenerable)
+data/synthetic_docs/
+data/uploads/
+
+# Eval results
+eval/results/
+!eval/results/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+.streamlit/

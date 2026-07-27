@@ -1,0 +1,21 @@
+FACTURA
+========================================
+EMISOR: Proveedor Servicios 31 S.A.
+NIF: 30-00000031-7
+Dirección: Av. Corrientes 734, CABA
+(Campos obligatorios incompletos: faltan datos del cliente o número de factura)
+
+Descripción                                 Cant.    P.Unit.    Importe
+----------------------------------------------------------------------
+Campaña SEM - Google Ads                        1    7708.36    7708.36
+Creación de contenido - artículos               8     300.75    2406.00
+Gestión de redes sociales - mensual             1    1701.44    1701.44
+Reporte de métricas y análisis                  1     846.89     846.89
+----------------------------------------------------------------------
+Subtotal:                                                    12662.69
+IVA (21%):                                                2659.16
+TOTAL:                                                       15421.85
+
+Forma de pago: Transferencia bancaria
+CBU: 000000310000003112345678901
+Banco: Banco Nacional 31

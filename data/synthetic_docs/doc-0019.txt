@@ -1,0 +1,21 @@
+FACTURA
+========================================
+EMISOR: Proveedor Servicios 19 S.A.
+NIF: 30-00000019-8
+Dirección: Av. Corrientes 4102, CABA
+(Campos obligatorios incompletos: faltan datos del cliente o número de factura)
+
+Descripción                                 Cant.    P.Unit.    Importe
+----------------------------------------------------------------------
+Campaña SEM - Google Ads                        1    4008.97    4008.97
+Creación de contenido - artículos               5     390.29    1951.45
+Gestión de redes sociales - mensual             1    1610.22    1610.22
+Reporte de métricas y análisis                  1    1656.68    1656.68
+----------------------------------------------------------------------
+Subtotal:                                                     9227.32
+IVA (21%):                                                1937.74
+TOTAL:                                                       11665.06
+
+Forma de pago: Transferencia bancaria
+CBU: 000000310000001912345678901
+Banco: Banco Nacional 19

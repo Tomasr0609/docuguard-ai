@@ -1,0 +1,23 @@
+Acuerdo de Confidencialidad - Acuerdo de Confidencialidad Unilateral
+Entre InnovateCorp 12 S.A. ("Parte Divulgante") y Proveedor Tecnológico Asociado 12 S.L. ("Parte Receptora")
+Fecha: 10 de febrero de 2025
+
+1. PROPÓSITO
+Evaluación de posible colaboración en desarrollo de producto
+
+2. DEFINICIÓN DE INFORMACIÓN CONFIDENCIAL
+Se considera Información Confidencial aquella información técnica, financiera o comercial que sea (a) marcada como confidencial al momento de la divulgación, o (b) comunicada oralmente y confirmada por escrito dentro de los 15 días siguientes.
+
+3. EXCLUSIONES
+No se considerará Información Confidencial aquella que: (a) sea o se vuelva pública sin violación del presente acuerdo; (b) la Parte Receptora pueda demostrar que conocía previamente; (c) sea recibida de un tercero sin obligación de confidencialidad; (d) sea desarrollada independientemente por la Parte Receptora.
+
+4. OBLIGACIONES DE CONFIDENCIALIDAD
+La Parte Receptora se obliga a: ejercer el mismo grado de cuidado que con su propia información confidencial, limitar el acceso a personal que necesite conocerla, y notificar inmediatamente cualquier divulgación no autorizada.
+
+5. PLAZO DE VIGENCIA
+Las obligaciones de confidencialidad establecidas en el presente acuerdo se mantendrán vigentes de forma indefinida, incluso después de la terminación del acuerdo.
+
+6. DEVOLUCIÓN DE INFORMACIÓN
+Al terminar el acuerdo, la Parte Receptora devolverá o destruirá toda la Información Confidencial recibida, a opción de la Parte Divulgante.
+
+Firmado en CABA, a los 6 días del mes de abril de 2025.

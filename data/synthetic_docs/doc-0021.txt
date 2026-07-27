@@ -1,0 +1,25 @@
+FACTURA
+========================================
+EMISOR: Proveedor Servicios 21 S.A.
+NIF: 30-00000021-1
+Dirección: Av. Corrientes 2997, CABA
+CLIENTE: Cliente Final 21 S.R.L.
+NIF CLIENTE: 30-00000121-8
+Número de factura: F-2025-0021
+Fecha de emisión: 07/11/2025
+Fecha de vencimiento: 08/06/2025
+
+Descripción                                 Cant.    P.Unit.    Importe
+----------------------------------------------------------------------
+Servicio de mantenimiento mensual               1    9188.94    9188.94
+Horas de soporte técnico                       29     104.97    3044.13
+Infraestructura cloud - consumo mensual         1    7187.63    7187.63
+Capacitación in company                         2    2074.36    4148.72
+----------------------------------------------------------------------
+Subtotal:                                                    23569.42
+IVA (21%):                                                4949.58
+TOTAL:                                                       28519.00
+
+Forma de pago: Transferencia bancaria
+CBU: 000000310000002112345678901
+Banco: Banco Nacional 21

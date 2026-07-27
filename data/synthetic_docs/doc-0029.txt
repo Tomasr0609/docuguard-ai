@@ -1,0 +1,21 @@
+FACTURA
+========================================
+EMISOR: Proveedor Servicios 29 S.A.
+NIF: 30-00000029-3
+Dirección: Av. Corrientes 1540, CABA
+(Campos obligatorios incompletos: faltan datos del cliente o número de factura)
+
+Descripción                                 Cant.    P.Unit.    Importe
+----------------------------------------------------------------------
+Servicio de consultoría - mes 12                1   13041.10   13041.10
+Horas de desarrollo backend                    53     112.52    5963.56
+Horas de desarrollo frontend                   35     125.46    4391.10
+Licencia de software - período mensual          1    2825.85    2825.85
+----------------------------------------------------------------------
+Subtotal:                                                    26221.61
+IVA (21%):                                                5506.54
+TOTAL:                                                       31528.15
+
+Forma de pago: Transferencia bancaria
+CBU: 000000310000002912345678901
+Banco: Banco Nacional 29

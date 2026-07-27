@@ -1,0 +1,30 @@
+Contrato de Servicios de Consultoría
+Entre Consultora TechSolutions S.A. y Empresa Cliente 11 S.R.L.
+Fecha: 15 de marzo de 2025
+
+CLÁUSULA PRIMERA: OBJETO
+Servicios de consultoría en transformación digital, incluyendo análisis de procesos, implementación de sistemas ERP, y capacitación de personal.
+
+CLÁUSULA SEGUNDA: PLAZO
+El presente contrato tendrá una duración de 283 días contados desde su firma.
+
+CLÁUSULA TERCERA: PRECIO
+El contratista percibirá por sus servicios la suma de USD 32,944.00 pagaderos de la siguiente forma: 50% a la firma y 50% contra entrega de los entregables.
+
+(El contrato no incluye cláusula de terminación anticipada)
+
+CLÁUSULA QUINTA: PENALIZACIONES
+En caso de mora, se aplicará un interés del 3% mensual sobre las cantidades adeudadas. Dicho interés podrá ser ajustado periódicamente a criterio del contratista. La responsabilidad máxima acumulada de cada parte no excederá el 50% del valor del contrato.
+
+CLÁUSULA SEXTA: JURISDICCIÓN
+Las partes se someten a la jurisdicción de los Tribunales Ordinarios de Ciudad Autónoma de Buenos Aires, renunciando a cualquier otro fuero o jurisdicción.
+
+CLÁUSULA SÉPTIMA: PROTECCIÓN DE DATOS
+Las partes se comprometen a tratar los datos personales conforme a la Ley de Protección de Datos Personales, garantizando el consentimiento, finalidad, proporcionalidad y seguridad de los datos.
+
+CLÁUSULA FINAL: FUERZA MAYOR
+Ninguna parte será responsable por incumplimiento debido a eventos de fuerza mayor debidamente acreditados.
+
+Firmado en Ciudad Autónoma de Buenos Aires, a los 7 días del mes de febrero de 2025.
+
+Consultora TechSolutions S.A.                                  Empresa Cliente 11 S.R.L.

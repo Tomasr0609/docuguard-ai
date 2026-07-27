@@ -1,0 +1,25 @@
+FACTURA
+========================================
+EMISOR: Proveedor Servicios 32 S.A.
+NIF: 30-00000032-6
+Dirección: Av. Corrientes 3290, CABA
+CLIENTE: Cliente Final 32 S.R.L.
+NIF CLIENTE: 30-00000132-9
+Número de factura: F-2025-0032
+Fecha de emisión: 15/07/2025
+Fecha de vencimiento: 02/04/2025
+
+Descripción                                 Cant.    P.Unit.    Importe
+----------------------------------------------------------------------
+Campaña SEM - Google Ads                        1    9568.50    9568.50
+Creación de contenido - artículos              10     343.09    3430.90
+Gestión de redes sociales - mensual             1    2246.53    2246.53
+Reporte de métricas y análisis                  1    1780.17    1780.17
+----------------------------------------------------------------------
+Subtotal:                                                    17026.10
+IVA (21%):                                                3575.48
+TOTAL:                                                       20601.58
+
+Forma de pago: Transferencia bancaria
+CBU: 000000310000003212345678901
+Banco: Banco Nacional 32

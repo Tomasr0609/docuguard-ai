@@ -1,0 +1,25 @@
+FACTURA
+========================================
+EMISOR: Proveedor Servicios 39 S.A.
+NIF: 30-00000039-0
+Dirección: Av. Corrientes 2944, CABA
+CLIENTE: Cliente Final 39 S.R.L.
+NIF CLIENTE: 30-00000139-8
+Número de factura: F-2025-0039
+Fecha de emisión: 20/02/2025
+Fecha de vencimiento: 26/06/2025
+
+Descripción                                 Cant.    P.Unit.    Importe
+----------------------------------------------------------------------
+Campaña SEM - Google Ads                        1    5427.02    5427.02
+Creación de contenido - artículos               5     351.79    1758.95
+Gestión de redes sociales - mensual             1    1531.63    1531.63
+Reporte de métricas y análisis                  1    1733.50    1733.50
+----------------------------------------------------------------------
+Subtotal:                                                    10451.10
+IVA (21%):                                                2194.73
+TOTAL:                                                       12645.83
+
+Forma de pago: Transferencia bancaria
+CBU: 000000310000003912345678901
+Banco: Banco Nacional 39

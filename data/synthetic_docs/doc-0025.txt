@@ -1,0 +1,25 @@
+FACTURA
+========================================
+EMISOR: Proveedor Servicios 25 S.A.
+NIF: 30-00000025-4
+Dirección: Av. Corrientes 463, CABA
+CLIENTE: Cliente Final 25 S.R.L.
+NIF CLIENTE: 30-00000125-6
+Número de factura: F-2025-0025
+Fecha de emisión: 04/07/2025
+Fecha de vencimiento: 19/04/2025
+
+Descripción                                 Cant.    P.Unit.    Importe
+----------------------------------------------------------------------
+Campaña SEM - Google Ads                        1    2013.53    2013.53
+Creación de contenido - artículos               7     309.27    2164.89
+Gestión de redes sociales - mensual             1    3872.19    3872.19
+Reporte de métricas y análisis                  1    1434.73    1434.73
+----------------------------------------------------------------------
+Subtotal:                                                     9485.34
+IVA (21%):                                                1991.92
+TOTAL:                                                       11477.26
+
+Forma de pago: Transferencia bancaria
+CBU: 000000310000002512345678901
+Banco: Banco Nacional 25

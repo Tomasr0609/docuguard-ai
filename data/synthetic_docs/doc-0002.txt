@@ -1,0 +1,31 @@
+Contrato de Mantenimiento de Infraestructura TI
+Entre InfraServe S.A. y Organización Cliente 2 S.A.
+Fecha: 03 de marzo de 2025
+
+CLÁUSULA PRIMERA: OBJETO
+Servicios de mantenimiento preventivo y correctivo de infraestructura tecnológica, incluyendo servidores, redes y equipamiento de usuario final.
+
+CLÁUSULA SEGUNDA: PLAZO
+El presente contrato tendrá una duración de 601 días contados desde su firma.
+
+CLÁUSULA TERCERA: PRECIO
+El contratista percibirá por sus servicios la suma de USD 92,834.00 pagaderos de la siguiente forma: 50% a la firma y 50% contra entrega de los entregables.
+
+CLÁUSULA CUARTA: TERMINACIÓN ANTICIPADA
+Cualquiera de las partes podrá resolver el contrato sin causa mediante preaviso escrito de 30 días calendario. En caso de incumplimiento, la parte incumplidora dispondrá de 15 días hábiles para subsanarlo.
+
+CLÁUSULA QUINTA: PENALIZACIONES
+En caso de mora, se aplicará un interés del 3% mensual sobre las cantidades adeudadas. Dicho interés podrá ser ajustado periódicamente a criterio del contratista. La responsabilidad máxima acumulada de cada parte no excederá el 50% del valor del contrato.
+
+CLÁUSULA SEXTA: JURISDICCIÓN
+Las partes se someten a la jurisdicción de los Tribunales Ordinarios de Ciudad Autónoma de Buenos Aires, renunciando a cualquier otro fuero o jurisdicción.
+
+CLÁUSULA SÉPTIMA: PROTECCIÓN DE DATOS
+Las partes se comprometen a tratar los datos personales conforme a la Ley de Protección de Datos Personales, garantizando el consentimiento, finalidad, proporcionalidad y seguridad de los datos.
+
+CLÁUSULA FINAL: FUERZA MAYOR
+Ninguna parte será responsable por incumplimiento debido a eventos de fuerza mayor debidamente acreditados.
+
+Firmado en Ciudad Autónoma de Buenos Aires, a los 22 días del mes de marzo de 2025.
+
+InfraServe S.A.                                  Organización Cliente 2 S.A.
