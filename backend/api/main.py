@@ -1,8 +1,10 @@
 """FastAPI application — document upload, status, and report endpoints."""
+import asyncio
+import logging
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from sqlalchemy import select
 
 from backend.db.session import init_db, async_session_factory
@@ -13,16 +15,25 @@ from backend.config import settings
 UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 app = FastAPI(
     title="DocuGuard AI Lite API",
     description="Document compliance verification platform with multi-agent RAG pipeline",
     version="1.0.0",
 )
 
+logger = logging.getLogger(__name__)
+
 
 @app.on_event("startup")
 async def startup() -> None:
     await init_db()
+    logger.info("startup: DB initialized, logging configured at %s", settings.log_level)
 
 
 @app.get("/health")
@@ -33,7 +44,6 @@ async def health() -> dict:
 @app.post("/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,
 ) -> dict:
     """Upload a document and trigger processing in the background."""
     if file.size and file.size > settings.max_file_size_bytes:
@@ -55,8 +65,14 @@ async def upload_document(
         session.add(doc)
         await session.commit()
 
-    if background_tasks is not None:
-        background_tasks.add_task(process_document, doc_id, dest)
+    # Schedule the pipeline via asyncio.create_task instead of BackgroundTasks
+    # to ensure async functions run reliably in the event loop.
+    task = asyncio.create_task(process_document(doc_id, dest))
+    task.add_done_callback(
+        lambda t: logger.error(
+            "Unhandled exception in process_document: %s", t.exception()
+        ) if t.exception() else None
+    )
 
     return {
         "doc_id": doc_id,

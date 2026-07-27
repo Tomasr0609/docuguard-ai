@@ -67,8 +67,13 @@ with col3:
     score = detail.get("risk_score")
     st.metric("Score de riesgo", f"{score:.2f}" if score else "—")
 
-st.markdown(f"**Tiempo de procesamiento:** {detail.get('processing_time_ms', '?')} ms")
-st.markdown(f"**Costo estimado:** ${detail.get('total_cost_usd', 0):.4f} USD")
+if status in ("pending", "processing"):
+    st.info("El documento está siendo procesado. Los valores de costo, score y tiempo aparecerán al finalizar.")
+else:
+    tiempo = detail.get("processing_time_ms")
+    st.markdown(f"**Tiempo de procesamiento:** {tiempo} ms" if tiempo is not None else "**Tiempo de procesamiento:** —")
+    costo = detail.get("total_cost_usd")
+    st.markdown(f"**Costo estimado:** ${costo:.4f} USD" if costo is not None else "**Costo estimado:** —")
 
 # Findings
 st.subheader("Hallazgos")

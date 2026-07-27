@@ -1,4 +1,5 @@
 """Document processing pipeline: ingestion -> agent graph -> database persistence."""
+import json
 import logging
 import time
 from pathlib import Path
@@ -11,6 +12,7 @@ from backend.ingestion.ocr import extract_text_from_image, extract_text_from_sca
 from backend.ingestion.pdf_parser import extract_text_from_native_pdf, is_scanned_pdf, get_page_count
 from backend.agents.graph import compiled_graph
 from backend.agents.state import AgentState
+from backend.observability.tracing import TRACES_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +22,10 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 async def process_document(doc_id: str, file_path: Path) -> None:
     """Full pipeline: extract text -> run agent graph -> persist results."""
+    logger.info("process_document: starting doc_id=%s file=%s", doc_id, file_path)
     start_time = time.time()
-    async with async_session_factory() as session:
-        try:
+    try:
+        async with async_session_factory() as session:
             result = await session.execute(select(Document).where(Document.doc_id == doc_id))
             db_doc = result.scalar_one_or_none()
             if db_doc is None:
@@ -97,19 +100,43 @@ async def process_document(doc_id: str, file_path: Path) -> None:
             if result.get("errors"):
                 db_doc.status = ProcessingStatus.failed
 
+            # Aggregate LLM call costs from traces for this doc_id
+            total_cost = 0.0
+            try:
+                if TRACES_PATH.exists():
+                    with open(TRACES_PATH, "r", encoding="utf-8") as tf:
+                        for line in tf:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            record = json.loads(line)
+                            if record.get("doc_id") == doc_id:
+                                total_cost += record.get("estimated_cost_usd", 0.0)
+            except Exception as cost_err:
+                logger.warning("process_document: cost aggregation failed for doc_id=%s: %s", doc_id, cost_err)
+
+            db_doc.total_cost_usd = round(total_cost, 6)
+
             elapsed = int((time.time() - start_time) * 1000)
             db_doc.processing_time_ms = elapsed
             await session.commit()
-            logger.info("process_document: doc_id=%s completed in %d ms", doc_id, elapsed)
+            logger.info(
+                "process_document: doc_id=%s completed in %d ms, cost=%.6f USD",
+                doc_id, elapsed, total_cost,
+            )
 
-        except Exception as e:
-            logger.exception("process_document: doc_id=%s failed: %s", doc_id, e)
-            try:
-                db_doc.status = ProcessingStatus.failed
-                db_doc.executive_summary = f"Pipeline error: {e}"
-                await session.commit()
-            except Exception as commit_err:
-                logger.exception("process_document: failed to persist failure status for doc_id=%s: %s", doc_id, commit_err)
+    except Exception as e:
+        logger.exception("process_document: doc_id=%s failed: %s", doc_id, e)
+        try:
+            async with async_session_factory() as session:
+                result = await session.execute(select(Document).where(Document.doc_id == doc_id))
+                db_doc = result.scalar_one_or_none()
+                if db_doc is not None:
+                    db_doc.status = ProcessingStatus.failed
+                    db_doc.executive_summary = f"Pipeline error: {e}"
+                    await session.commit()
+        except Exception as commit_err:
+            logger.exception("process_document: failed to persist failure status for doc_id=%s: %s", doc_id, commit_err)
 
 
 def _detect_doc_type_from_filename(filename: str) -> str:
