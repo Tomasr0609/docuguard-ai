@@ -1,5 +1,8 @@
 import sqlite3
 c = sqlite3.connect('docuguard.db')
+print("--- Fallidos ---")
+for row in c.execute("SELECT doc_id, executive_summary FROM documents WHERE status='failed'").fetchall():
+    print(row)
 
 print("--- Documentos ---")
 rows = c.execute("SELECT doc_id, status, risk_level FROM documents WHERE doc_id IN ('doc-0001','doc-0002','doc-0003')").fetchall()

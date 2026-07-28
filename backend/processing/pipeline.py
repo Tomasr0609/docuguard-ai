@@ -82,8 +82,15 @@ async def process_document(doc_id: str, file_path: Path) -> None:
             db_doc.executive_summary = result.get("executive_summary")
             db_doc.status = ProcessingStatus.completed
 
-            # Save findings
+            # Save findings (dedup by (type, description) tuple before persisting)
+            seen = set()
+            deduped = []
             for f_data in result.get("findings", []):
+                key = (f_data.get("type"), f_data.get("description"))
+                if key not in seen:
+                    seen.add(key)
+                    deduped.append(f_data)
+            for f_data in deduped:
                 finding = Finding(
                     document_id=db_doc.id,
                     finding_type=f_data.get("type", "unknown"),
@@ -99,6 +106,12 @@ async def process_document(doc_id: str, file_path: Path) -> None:
 
             if result.get("errors"):
                 db_doc.status = ProcessingStatus.failed
+                errors_text = "\n".join(str(e) for e in result["errors"])
+                logger.warning(
+                    "process_document: doc_id=%s completed with non-fatal errors:\n%s",
+                    doc_id, errors_text,
+                )
+                db_doc.processing_errors = errors_text
 
             # Aggregate LLM call costs from traces for this doc_id
             total_cost = 0.0
@@ -133,7 +146,7 @@ async def process_document(doc_id: str, file_path: Path) -> None:
                 db_doc = result.scalar_one_or_none()
                 if db_doc is not None:
                     db_doc.status = ProcessingStatus.failed
-                    db_doc.executive_summary = f"Pipeline error: {e}"
+                    db_doc.processing_errors = f"Unhandled exception: {e}"
                     await session.commit()
         except Exception as commit_err:
             logger.exception("process_document: failed to persist failure status for doc_id=%s: %s", doc_id, commit_err)

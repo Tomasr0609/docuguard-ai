@@ -72,7 +72,11 @@ async def critic_agent(state: AgentState) -> dict:
         match = re.search(r'\[.*\]', json_str, re.DOTALL)
         if match:
             json_str = match.group(0)
-        classified = json.loads(json_str)
+        try:
+            classified = json.loads(json_str)
+        except json.JSONDecodeError:
+            from json_repair import repair_json
+            classified = json.loads(repair_json(json_str))
         if not isinstance(classified, list):
             classified = []
         logger.info("critic parsed response for doc_id=%s: %s", doc_id, classified)

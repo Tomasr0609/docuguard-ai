@@ -155,6 +155,7 @@ async def run_full_eval(subset: Optional[int] = None) -> dict[str, Any]:
                 existing.risk_score = None
                 existing.processing_time_ms = None
                 existing.total_cost_usd = None
+                existing.processing_errors = None
             else:
                 existing = Document(
                     doc_id=doc_id,

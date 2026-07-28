@@ -79,7 +79,11 @@ async def verifier_agent(state: AgentState) -> dict:
         match = re.search(r'\[.*\]', json_str, re.DOTALL)
         if match:
             json_str = match.group(0)
-        findings_raw = json.loads(json_str)
+        try:
+            findings_raw = json.loads(json_str)
+        except json.JSONDecodeError:
+            from json_repair import repair_json
+            findings_raw = json.loads(repair_json(json_str))
         if not isinstance(findings_raw, list):
             findings_raw = []
     except (json.JSONDecodeError, IndexError) as e:

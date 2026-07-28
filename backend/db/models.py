@@ -59,6 +59,7 @@ class Document(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     processing_time_ms = Column(Integer, nullable=True)
     total_cost_usd = Column(Float, nullable=True)
+    processing_errors = Column(Text, nullable=True)
 
     findings = relationship("Finding", back_populates="document", cascade="all, delete-orphan")
 

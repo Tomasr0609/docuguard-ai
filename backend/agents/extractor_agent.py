@@ -55,7 +55,11 @@ async def extractor_agent(state: AgentState) -> dict:
         match = re.search(r'\{.*\}', json_str, re.DOTALL)
         if match:
             json_str = match.group(0)
-        extracted = json.loads(json_str)
+        try:
+            extracted = json.loads(json_str)
+        except json.JSONDecodeError:
+            from json_repair import repair_json
+            extracted = json.loads(repair_json(json_str))
     except (json.JSONDecodeError, IndexError) as e:
         return {"errors": [f"Failed to parse extractor output as JSON: {e}", f"Raw output: {response[:500]}"]}
 
