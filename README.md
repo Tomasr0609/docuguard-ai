@@ -240,18 +240,6 @@ Usamos zero-shot con prompt estructurado y output parsing tolerante a errores de
 - **Ruido residual de duplicación de hallazgos (~1% del total, 2 casos sobre 150+).** Se identificó y corrigió un bug de duplicación masiva en la acumulación de estado del grafo de LangGraph; queda un remanente marginal no perseguido por rendimientos decrecientes frente al costo de una corrida completa adicional (30-40 min).
 - **Procesamiento síncrono por documento, sin cola de tareas.** El sistema no escala horizontalmente en su forma actual — ver "Próximo paso" en la sección de Celery más arriba.
 
-## Checklist para entrevista técnica
-
-Puntos clave a mencionar sobre este proyecto:
-
-1. **Simplificación deliberada de infra:** SQLite en vez de Postgres, ChromaDB en vez de pgvector, `asyncio.create_task` en vez de Celery — cada decisión tiene un "qué cambiaría en producción" documentado. Esto muestra criterio de ingeniería, no atajos sin pensar.
-2. **Multi-agente real con LangGraph:** no es un solo prompt. 4 agentes especializados con routing condicional (si no hay hallazgos, se salta el Crítico). Cada nodo captura sus errores en `errors[]`.
-3. **RAG real con corpus normativo:** ChromaDB con 10 documentos de referencia, retrieval semántico, contexto inyectado al prompt del Verificador — no es una simulación.
-4. **Dataset sintético con ground truth verificable:** 40 documentos, 3 formatos cada uno, 60% con hallazgos, severidad balanceada (≤50% high), 12 casos ambiguos marcados a propósito.
-5. **Evaluación automatizada con resultados reales, no maquillados:** el eval reveló una asimetría real de calidad (fuerte en clasificación, débil en detección) — la historia de cómo se llegó a esos números (varios bugs de infraestructura encontrados y corregidos en el camino: procesamiento trabado, mismatch de IDs, taxonomía de hallazgos, parseo de JSON en 3 variantes distintas) es en sí misma un buen relato de debugging sistemático.
-6. **Observabilidad sin infra externa:** cada llamada LLM se loguea a `traces.jsonl` con timestamp, tokens, costo estimado, latencia.
-7. **Router multi-modelo funcional, no solo preparado:** el contrato de `route()` está implementado y probado con dos proveedores reales (Ollama y Anthropic), intercambiables por variable de entorno sin tocar código de agentes.
-
 ## Estructura del proyecto
 
 ```
