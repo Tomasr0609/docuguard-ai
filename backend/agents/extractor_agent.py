@@ -7,6 +7,11 @@ from backend.agents.state import AgentState, ExtractedInfo
 
 EXTRACTOR_SYSTEM_PROMPT = """Eres un extractor de datos documentales. Tu tarea es analizar el texto de un documento legal o comercial y extraer la información estructurada solicitada.
 
+IMPORTANTE — El campo "doc_type" DEBE ser exactamente una de estas 4 palabras en inglés y minúscula:
+  "contract", "nda", "invoice", o "unknown".
+Nunca uses otra palabra, sinónimo, o traducción (ej. no uses "acuerdo", "contrato de servicios",
+"confidencialidad", "factura", etc.). Solo las 4 opciones listadas.
+
 Debes devolver exclusivamente un JSON con esta estructura:
 {
   "doc_type": "contract|nda|invoice|unknown",
@@ -63,8 +68,22 @@ async def extractor_agent(state: AgentState) -> dict:
     except (json.JSONDecodeError, IndexError) as e:
         return {"errors": [f"Failed to parse extractor output as JSON: {e}", f"Raw output: {response[:500]}"]}
 
-    # Detect doc_type from document text if not provided by LLM
-    doc_type = (extracted or {}).get("doc_type", "unknown")
+    # Normalize doc_type: force one of the 4 controlled values
+    DOC_TYPE_MAP = {
+        "acuerdo": "nda", "acuerdo de confidencialidad": "nda", "confidencialidad": "nda",
+        "nda": "nda", "non-disclosure": "nda", "non disclosure": "nda",
+        "contrato": "contract", "contrato de servicios": "contract", "servicio": "contract",
+        "servicios": "contract", "cláusula": "contract", "clausula": "contract",
+        "contract": "contract",
+        "factura": "invoice", "facturación": "invoice", "facturacion": "invoice",
+        "invoice": "invoice",
+    }
+    raw_doc_type = ((extracted or {}).get("doc_type") or "unknown").strip().lower()
+    doc_type = DOC_TYPE_MAP.get(raw_doc_type, raw_doc_type)
+    if doc_type not in ("contract", "nda", "invoice", "unknown"):
+        doc_type = "unknown"
+
+    # Detect doc_type from document text if LLM returned unknown
     if doc_type == "unknown":
         text_lower = raw_text.lower()
         if any(w in text_lower for w in ["factura", "facturación", "facturacion", "iva", "subtotal"]):
@@ -73,6 +92,24 @@ async def extractor_agent(state: AgentState) -> dict:
             doc_type = "nda"
         elif any(w in text_lower for w in ["contrato", "cláusula", "clausula", "servicios"]):
             doc_type = "contract"
+
+    # Deterministic amount inconsistency check (only for invoices)
+    if doc_type == "invoice":
+        amounts = (extracted or {}).get("amounts") or {}
+        try:
+            subtotal = float(amounts.get("subtotal") or 0.0)
+            monto_total = float(amounts.get("monto_total") or 0.0)
+            iva = float(amounts.get("iva") or 0.0)
+            expected = subtotal + iva
+            if abs(expected - monto_total) > 0.01:
+                if isinstance(extracted, dict):
+                    extracted.setdefault("_flags", {})["amount_inconsistency"] = {
+                        "expected": round(expected, 2),
+                        "actual": round(monto_total, 2),
+                        "difference": round(abs(expected - monto_total), 2),
+                    }
+        except (TypeError, ValueError):
+            pass  # campos no numéricos, no se puede verificar
 
     return {
         "extracted_info": extracted,

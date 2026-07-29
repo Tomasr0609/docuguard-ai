@@ -11,6 +11,7 @@ and ANTHROPIC_API_KEY in .env.
 Generates a report in eval/results/{timestamp}.md
 """
 import json
+import logging
 import os
 import sys
 import time
@@ -19,6 +20,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 from eval.metrics import compute_all_metrics
 

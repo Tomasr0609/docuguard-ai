@@ -122,6 +122,54 @@ async def get_document(doc_id: str) -> dict:
     }
 
 
+@app.delete("/documents/clear")
+async def delete_all_documents() -> dict:
+    """Delete all documents, their findings, and all uploaded files."""
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(Document)
+        )
+        docs = result.scalars().all()
+        count = len(docs)
+
+        for doc in docs:
+            # Delete physical file for each document
+            for ext in ("", ".pdf", ".png", ".jpg", ".jpeg", ".txt"):
+                f = UPLOAD_DIR / f"{doc.doc_id}{ext}"
+                if f.exists():
+                    f.unlink()
+                    break
+            await session.delete(doc)
+
+        await session.commit()
+
+    return {"deleted_count": count, "status": "all_deleted"}
+
+
+@app.delete("/documents/{doc_id}")
+async def delete_document(doc_id: str) -> dict:
+    """Delete a document, its findings, and the uploaded file."""
+    async with async_session_factory() as session:
+        result = await session.execute(
+            select(Document).where(Document.doc_id == doc_id)
+        )
+        doc = result.scalar_one_or_none()
+        if doc is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        # Delete physical file if it exists
+        for ext in ("", ".pdf", ".png", ".jpg", ".jpeg", ".txt"):
+            f = UPLOAD_DIR / f"{doc_id}{ext}"
+            if f.exists():
+                f.unlink()
+                break
+
+        await session.delete(doc)
+        await session.commit()
+
+    return {"doc_id": doc_id, "status": "deleted"}
+
+
 @app.get("/documents")
 async def list_documents() -> list[dict]:
     """List all processed documents."""

@@ -3,10 +3,10 @@ from backend.llm.router import call_llm
 from backend.agents.state import AgentState
 
 
-WRITER_SYSTEM_PROMPT = """Eres un redactor de informes ejecutivos de compliance. Tu tarea es generar un resumen claro y profesional.
+WRITER_SYSTEM_PROMPT = """Eres un redactor de informes ejecutivos de compliance. Tu tarea es generar un resumen claro y profesional basado EXACTAMENTE en los datos que se te proporcionan.
 
 El reporte debe incluir:
-1. Un párrafo ejecutivo con el nivel de riesgo global
+1. Un párrafo ejecutivo con el nivel de riesgo global (usá el valor exacto de 'Riesgo global' que se te indica — NO digas que no hay hallazgos si hay hallazgos listados)
 2. Lista numerada de hallazgos, cada uno con:
    - Tipo de hallazgo
    - Severidad (high/medium/low)
@@ -16,6 +16,8 @@ El reporte debe incluir:
 3. Recomendaciones accionables (2-3)
 
 Redacción formal y profesional. Usa el tipo de documento (contrato/NDA/factura) en la redacción.
+
+IMPORTANTE: No contradigas la información provista. Si el nivel de riesgo es 'low' y hay 2 hallazgos, no digas que no hay hallazgos ni que el riesgo es 'none'. Usá los datos exactamente como se dan.
 
 Responde SOLO con el texto del reporte, sin JSON."""
 

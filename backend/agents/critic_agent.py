@@ -102,17 +102,16 @@ async def critic_agent(state: AgentState) -> dict:
             enriched["risk_score"] = 0.5
         updated_findings.append(enriched)
 
-    # Determine overall risk level
-    severities = [f.get("severity", "low") for f in updated_findings]
-    if "high" in severities:
+    # Determine overall risk level proportionally from average risk_score
+    risk_scores = [f.get("risk_score", 0.5) for f in updated_findings]
+    risk_score = round(sum(risk_scores) / len(risk_scores), 2) if risk_scores else 0.0
+
+    if risk_score >= 0.7:
         risk_level = "high"
-    elif "medium" in severities:
+    elif risk_score >= 0.4:
         risk_level = "medium"
     else:
         risk_level = "low"
-
-    risk_scores = [f.get("risk_score", 0.5) for f in updated_findings]
-    risk_score = round(sum(risk_scores) / len(risk_scores), 2) if risk_scores else 0.0
 
     return {
         "findings": updated_findings,

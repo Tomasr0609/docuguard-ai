@@ -108,8 +108,8 @@ if exec_summary:
 # Actions
 st.subheader("Acciones")
 
-col1, col2 = st.columns(2)
-with col1:
+col_a, col_b, col_c, col_d = st.columns(4)
+with col_a:
     if st.button("Exportar como JSON"):
         import json
         st.download_button(
@@ -118,7 +118,51 @@ with col1:
             file_name=f"{doc_id}_report.json",
             mime="application/json",
         )
-with col2:
+with col_b:
     if st.button("Volver a procesar"):
-        # Re-upload the file
         st.info("Funcionalidad no disponible desde la UI. Usá la API.")
+
+with col_c:
+    confirm_key = f"confirm_delete_{doc_id}"
+    if st.button("Eliminar documento", type="secondary"):
+        st.session_state[confirm_key] = True
+
+    if st.session_state.get(confirm_key):
+        st.warning("¿Estás seguro de eliminar este documento?")
+        col_yes, col_no = st.columns(2)
+        with col_yes:
+            if st.button("Sí, eliminar", key=f"yes_{doc_id}"):
+                r = httpx.delete(_api_url(f"documents/{doc_id}"), timeout=10)
+                if r.status_code == 200:
+                    st.success("Documento eliminado.")
+                    st.session_state.pop(confirm_key, None)
+                    st.rerun()
+                else:
+                    st.error(f"Error al eliminar: {r.text}")
+        with col_no:
+            if st.button("Cancelar", key=f"no_{doc_id}"):
+                st.session_state.pop(confirm_key, None)
+                st.rerun()
+
+with col_d:
+    confirm_all_key = "confirm_delete_all"
+    if st.button("Eliminar todos", type="secondary"):
+        st.session_state[confirm_all_key] = True
+
+    if st.session_state.get(confirm_all_key):
+        st.error("¿Eliminar TODOS los documentos? Esta acción no se puede deshacer.")
+        col_yes, col_no = st.columns(2)
+        with col_yes:
+            if st.button("Sí, eliminar todos", key="yes_all"):
+                r = httpx.delete(_api_url("documents/clear"), timeout=30)
+                if r.status_code == 200:
+                    data = r.json()
+                    st.success(f"{data['deleted_count']} documento(s) eliminado(s).")
+                    st.session_state.pop(confirm_all_key, None)
+                    st.rerun()
+                else:
+                    st.error(f"Error al eliminar: {r.text}")
+        with col_no:
+            if st.button("Cancelar", key="no_all"):
+                st.session_state.pop(confirm_all_key, None)
+                st.rerun()

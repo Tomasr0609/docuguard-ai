@@ -159,18 +159,19 @@ Evaluación completa sobre el dataset sintético de 40 documentos (contratos, ND
 
 | Métrica | Valor | Qué mide |
 |---|---|---|
-| Finding Recall | **0.74** | Qué fracción de los hallazgos esperados el sistema logra detectar |
-| Finding Precision | **0.14** | Qué fracción de los hallazgos reportados son reales (vs. falsos positivos) |
-| Severity Accuracy | **0.75** | De los hallazgos detectados correctamente, cuántos tienen la severidad (low/medium/high) bien clasificada |
-| Risk Level Accuracy | **0.45** | Qué tan seguido el score de riesgo global del documento coincide con el esperado |
-| Extraction Accuracy | **0.80** | Qué tan seguido el sistema identifica correctamente el tipo de documento (contrato/NDA/factura) |
+| Finding Recall | **0.575** | Qué fracción de los hallazgos esperados el sistema logra detectar |
+| Finding Precision | **0.604** | Qué fracción de los hallazgos reportados son reales (vs. falsos positivos) |
+| Severity Accuracy | **0.913** | De los hallazgos detectados correctamente, cuántos tienen la severidad (low/medium/high) bien clasificada |
+| Risk Level Accuracy | **0.275** | Qué tan seguido el score de riesgo global del documento coincide con el esperado |
+| Extraction Accuracy | **0.70** | Qué tan seguido el sistema identifica correctamente el tipo de documento (contrato/NDA/factura) |
 
 ### Lectura de los resultados
 
-El patrón es consistente y no es ruido: **el modelo local es notablemente más confiable en tareas de clasificación con contexto acotado que en tareas de detección/generación abierta.**
+El patrón es consistente a lo largo de todas las corridas: **el modelo local es notablemente más confiable en tareas de clasificación con contexto acotado que en tareas de detección/generación abierta y de agregación de riesgo global.**
 
-- **Fuerte** en clasificación de severidad (0.75) y tipo de documento (0.80) — tareas donde el modelo recibe un input ya delimitado y elige entre un set cerrado de opciones.
-- **Débil** en precisión de detección (0.14) — el Agente Verificador sobre-genera hallazgos, incluyendo desviaciones en documentos que el ground truth marca como completamente limpios. El recall alto (0.74) confirma que el modelo sí encuentra la mayoría de los problemas reales; el punto débil es que también reporta bastantes que no lo son.
+- **Fuerte** en clasificación de severidad (0.913) — cuando el sistema detecta un hallazgo real, casi siempre acierta qué tan grave es.
+- **Sólido y balanceado** en detección de hallazgos (Recall 0.575 / Precision 0.604) — tras varias rondas de refinamiento (ver sección de Proceso de Depuración), el sistema pasó de ser "alarmista" (Precision inicial de 0.14, con un 86% de falsos positivos) a un balance razonable entre encontrar problemas reales y no generar ruido excesivo.
+- **Débil** en Risk Level Accuracy (0.275) y Extraction Accuracy (0.70) — la clasificación del tipo de documento por parte del Agente Extractor sigue siendo inconsistente entre corridas para casos límite (ej. un NDA clasificado como "contract"), y ese error se propaga al filtro de tipos válidos por documento y al cálculo del riesgo agregado.
 
 Esta asimetría es exactamente el tipo de resultado que un eval harness bien diseñado debería sacar a la luz: no es "el modelo funciona" o "no funciona", es "funciona bien en ciertas etapas del pipeline y mal en otras", lo cual informa directamente dónde invertir el próximo esfuerzo de ingeniería.
 
@@ -179,6 +180,49 @@ Esta asimetría es exactamente el tipo de resultado que un eval harness bien dis
 - Dataset: 40 documentos sintéticos, distribución 40% limpios / 60% con hallazgos de riesgo, 3 tipos de documento, severidad balanceada (≤50% `high`), y 12 casos ambiguos a propósito (jurisdicción atípica, penalizaciones en el límite de lo razonable).
 - Matching de hallazgos por tipo exacto (taxonomía cerrada de 14 categorías, ver `backend/agents/state.py`), no por similitud semántica — más estricto, pero más auditable.
 - El eval reutiliza el mismo `backend/llm/router.py` que el resto del sistema, por lo que corre indistintamente contra Ollama o Anthropic vía `LLM_PROVIDER` en `.env`.
+- Se confirmó experimentalmente que Ollama, en este entorno, es determinístico con `temperature=0.0`: 3 corridas idénticas del mismo subset produjeron resultados byte-a-byte iguales. Esto permitió diferenciar con confianza entre "ruido del modelo" y "regresión real de código" durante la depuración (ver más abajo).
+
+## Proceso de depuración: de un sistema alarmista a uno balanceado
+
+La primera corrida completa del eval, antes de cualquier ajuste, dio **Finding Precision: 0.14** — el sistema generaba 7 falsos positivos por cada hallazgo real. La causa raíz y el proceso de diagnóstico y corrección se documentan acá porque es, en sí mismo, un ejercicio representativo de depuración de sistemas de IA en producción.
+
+### 1. Procesamiento trabado sin logging
+
+Los documentos quedaban en estado `pending` indefinidamente, sin ningún error visible. Causa: `BackgroundTasks` de FastAPI no propagaba excepciones a la consola. Se migró a `asyncio.create_task` con un callback explícito de logging de excepciones no capturadas.
+
+### 2. Mismatch de identificadores
+
+Los endpoints de consulta devolvían `404 Not Found` para documentos recién subidos. Causa: se comparaba `doc_id` (string) contra la clave primaria numérica de la base con `session.get()`, que busca por PK, no por columna arbitraria. Se corrigió usando `select().where(Document.doc_id == doc_id)`.
+
+### 3. Parseo de JSON en tres variantes de fallo distintas
+
+El parser de respuestas del LLM asumía JSON envuelto en bloques ` ```json `, pero Ollama a veces devuelve el array envuelto en texto libre explicativo, o con errores de formato (números con doble punto decimal, caracteres de control sin escapar). Se resolvió con extracción por regex del array/objeto JSON dentro del texto, más `json_repair` como fallback para JSON malformado.
+
+### 4. Taxonomía de hallazgos inconsistente
+
+El Verificador generaba descripciones libres en español (`"Falta de cláusula de terminación..."`) en vez de códigos fijos (`missing_termination_clause`), impidiendo cualquier comparación automática contra el ground truth. Se centralizó una taxonomía cerrada de 14 categorías en `backend/agents/state.py`, forzada por prompt en el Verificador y preservada literal por el Crítico.
+
+### 5. Sobre-generación de hallazgos (causa raíz de la precisión baja)
+
+Con la taxonomía ya corregida, el sistema seguía generando hallazgos falsos — incluyendo cláusulas "faltantes" que en realidad estaban presentes en el documento. Se implementaron tres capas de validación en código, en cascada, dentro de `verifier_agent.py`:
+
+1. **Validación de cita real**: el `source_snippet` reportado debe aparecer (match exacto o ≥50% de cobertura de palabras) en el texto real del documento. Un hallazgo sin cita, o con cita inventada, se descarta.
+2. **Coherencia temática**: para hallazgos de tipo "falta X", se verifica que el tema X no aparezca en ningún lugar del documento completo (si aparece, hay contradicción lógica). Para el resto, se verifica que la cita esté relacionada temáticamente con el tipo de hallazgo reportado.
+3. **Validez por tipo de documento**: un diccionario de tipos de hallazgo válidos por categoría de documento (ej. `no_cap_liability` nunca aplica a un NDA) descarta hallazgos fuera de contexto.
+
+Esto llevó la Precisión de 0.14 a 0.60-0.70 en distintas corridas, con el trade-off esperado de una caída moderada en Recall.
+
+### 6. Inconsistencia aritmética no verificable por LLM
+
+La detección de `amount_inconsistency` (montos de factura que no cuadran) dependía de que el modelo "notara" la discrepancia leyendo el texto — poco confiable para aritmética. Se agregó un chequeo determinístico en `extractor_agent.py`: comparación directa `subtotal + iva` vs `monto_total` en código Python, sin pasar por el LLM, inyectado como hallazgo garantizado cuando corresponde.
+
+### 7. Experimento de mejora revertido con evidencia
+
+Se probó agregar un ejemplo few-shot al prompt del Verificador para mejorar la calidad de las citas textuales. Una prueba de control (misma corrida repetida 3 veces, resultados idénticos, confirmando determinismo del modelo) permitió aislar que el cambio causaba una regresión real — el modelo dejaba de generar ciertos hallazgos legítimos en vez de citarlos mejor. Se revirtió el cambio específico, conservando el resto de las mejoras, con una mejora neta confirmada tras el revert.
+
+### Aprendizaje general
+
+Cada síntoma visible (precisión baja, risk level siempre "high", recall inconsistente) tenía una causa de código identificable y corregible — pero varias causas se enmascaraban entre sí, por lo que el orden de diagnóstico importó tanto como las correcciones en sí. La disciplina de: reproducir con logs detallados → aislar la causa con un caso mínimo → corregir → volver a medir con el eval harness, fue lo que permitió pasar de un sistema no confiable a uno con comportamiento entendido y documentado.
 
 ## Uso
 
@@ -223,9 +267,9 @@ Usamos Ollama local (`llama3.2:3b`) como proveedor por defecto porque:
 2. **100% offline** — todo corre en la máquina local, sin dependencia de internet.
 3. **Rápido de iterar** — sin preocuparse por costo por request durante debugging.
 
-El router (`backend/llm/router.py`) lee `LLM_PROVIDER` de `.env`. Para cambiar a Anthropic solo se edita esa variable — ningún agente necesita cambios. Los resultados documentados arriba (Finding Precision 0.14) muestran el trade-off real: gratis, pero con calidad de detección notablemente más baja que un modelo de mayor capacidad. Este hallazgo, obtenido con el eval harness, es el argumento de ingeniería para decidir cuándo vale la pena el costo de Claude.
+El router (`backend/llm/router.py`) lee `LLM_PROVIDER` de `.env`. Para cambiar a Anthropic solo se edita esa variable — ningún agente necesita cambios. Los resultados documentados arriba muestran el trade-off real: gratis, pero con calidad de detección y clasificación de tipo de documento notablemente más variable que un modelo de mayor capacidad. Este hallazgo, obtenido con el eval harness y confirmado con pruebas de determinismo, es el argumento de ingeniería para decidir cuándo vale la pena el costo de Claude.
 
-**Próximo paso:** routing dinámico por etapa — usar Ollama para clasificación de severidad y tipo de documento (donde ya rinde bien, 0.75-0.80 de accuracy), y Claude para la etapa de detección de hallazgos (donde la precisión de Ollama es insuficiente para un caso de uso de compliance real).
+**Próximo paso:** routing dinámico por etapa — usar Ollama para clasificación de severidad (donde ya rinde muy bien, 0.91 de accuracy), y Claude para la etapa de extracción de tipo de documento y detección de hallazgos, donde la variabilidad de Ollama tiene mayor impacto.
 
 ### Por qué no hay fine-tuning?
 
@@ -235,22 +279,11 @@ Usamos zero-shot con prompt estructurado y output parsing tolerante a errores de
 
 ## Limitaciones conocidas
 
-- **Precisión de detección baja con el modelo local (0.14).** El Agente Verificador sobre-genera hallazgos con `llama3.2:3b`, incluyendo falsos positivos en documentos limpios. Mitigación documentada arriba (routing por etapa o modelo más grande para esa tarea puntual).
+- **Extraction Accuracy y Risk Level Accuracy por debajo del resto (0.70 y 0.275).** El Agente Extractor clasifica el tipo de documento de forma inconsistente entre corridas para casos límite, lo cual se propaga al filtro de tipos válidos por documento y al cálculo de riesgo agregado. Es la limitación de mayor impacto identificada y no resuelta — ver "Próximo paso" en la sección de Ollama arriba.
 - **Sin migraciones de base de datos (Alembic).** Cambios de esquema durante desarrollo requirieron recrear la base manualmente.
-- **Ruido residual de duplicación de hallazgos (~1% del total, 2 casos sobre 150+).** Se identificó y corrigió un bug de duplicación masiva en la acumulación de estado del grafo de LangGraph; queda un remanente marginal no perseguido por rendimientos decrecientes frente al costo de una corrida completa adicional (30-40 min).
+- **Ruido residual de duplicación de hallazgos.** Se identificó y corrigió un bug de duplicación masiva en la acumulación de estado del grafo de LangGraph; puede quedar un remanente marginal no perseguido por rendimientos decrecientes.
 - **Procesamiento síncrono por documento, sin cola de tareas.** El sistema no escala horizontalmente en su forma actual — ver "Próximo paso" en la sección de Celery más arriba.
 
-## Checklist para entrevista técnica
-
-Puntos clave a mencionar sobre este proyecto:
-
-1. **Simplificación deliberada de infra:** SQLite en vez de Postgres, ChromaDB en vez de pgvector, `asyncio.create_task` en vez de Celery — cada decisión tiene un "qué cambiaría en producción" documentado. Esto muestra criterio de ingeniería, no atajos sin pensar.
-2. **Multi-agente real con LangGraph:** no es un solo prompt. 4 agentes especializados con routing condicional (si no hay hallazgos, se salta el Crítico). Cada nodo captura sus errores en `errors[]`.
-3. **RAG real con corpus normativo:** ChromaDB con 10 documentos de referencia, retrieval semántico, contexto inyectado al prompt del Verificador — no es una simulación.
-4. **Dataset sintético con ground truth verificable:** 40 documentos, 3 formatos cada uno, 60% con hallazgos, severidad balanceada (≤50% high), 12 casos ambiguos marcados a propósito.
-5. **Evaluación automatizada con resultados reales, no maquillados:** el eval reveló una asimetría real de calidad (fuerte en clasificación, débil en detección) — la historia de cómo se llegó a esos números (varios bugs de infraestructura encontrados y corregidos en el camino: procesamiento trabado, mismatch de IDs, taxonomía de hallazgos, parseo de JSON en 3 variantes distintas) es en sí misma un buen relato de debugging sistemático.
-6. **Observabilidad sin infra externa:** cada llamada LLM se loguea a `traces.jsonl` con timestamp, tokens, costo estimado, latencia.
-7. **Router multi-modelo funcional, no solo preparado:** el contrato de `route()` está implementado y probado con dos proveedores reales (Ollama y Anthropic), intercambiables por variable de entorno sin tocar código de agentes.
 
 ## Estructura del proyecto
 
