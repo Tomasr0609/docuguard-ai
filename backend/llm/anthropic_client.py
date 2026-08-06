@@ -15,7 +15,7 @@ def get_client() -> AsyncAnthropic:
         if not api_key or api_key == "sk-ant-...":
             raise ValueError(
                 "ANTHROPIC_API_KEY no configurada. "
-                "Copi� .env.example a .env y complet� la clave."
+                "Copia .env.example a .env y completa la clave."
             )
         _client = AsyncAnthropic(api_key=api_key)
     return _client

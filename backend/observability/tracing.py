@@ -14,6 +14,7 @@ TRACES_PATH = Path(__file__).resolve().parent.parent.parent / "logs" / "traces.j
 COST_PER_1K_TOKENS: dict[str, dict[str, float]] = {
     "anthropic": {"input": 0.003, "output": 0.015},
     "ollama": {"input": 0.0, "output": 0.0},
+    "gemini": {"input": 0.0, "output": 0.0},
 }
 
 

@@ -18,6 +18,7 @@ from typing import Optional
 
 from backend.config import settings
 from backend.llm.anthropic_client import anthropic_call
+from backend.llm.gemini_client import gemini_call
 from backend.llm.ollama_client import ollama_call
 from backend.observability.tracing import log_llm_call
 
@@ -78,6 +79,15 @@ async def call_llm(
                 temperature=temperature,
             )
             resolved_model = model or settings.ollama_model
+        elif provider == "gemini":
+            text, input_tokens, output_tokens = await gemini_call(
+                prompt=prompt,
+                system=system,
+                model=model or settings.gemini_model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            resolved_model = model or settings.gemini_model
         else:
             raise ValueError(f"Unknown provider: {provider}")
     except Exception as e:

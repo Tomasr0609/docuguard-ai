@@ -11,6 +11,8 @@ from backend.db.session import init_db, async_session_factory
 from backend.db.models import Document, Finding, ProcessingStatus
 from backend.processing.pipeline import process_document
 from backend.config import settings
+from backend.usage_tracker import is_limit_exceeded, increment_daily_count
+from backend.cooldown_tracker import cooldown_remaining, record_upload
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -49,6 +51,22 @@ async def upload_document(
     if file.size and file.size > settings.max_file_size_bytes:
         raise HTTPException(status_code=413, detail=f"File too large. Max {settings.max_file_size_mb}MB.")
 
+    if is_limit_exceeded():
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Se alcanzó el límite diario de procesamiento de la demo. "
+                "Probá de nuevo mañana, o cloná el repo para correrlo con tu propio proveedor."
+            ),
+        )
+
+    _remaining = cooldown_remaining()
+    if _remaining > 0:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Cooldown activo: {int(_remaining) + 1} segundos restantes.",
+        )
+
     contents = await file.read()
     doc_id = str(uuid.uuid4())[:8]
     ext = Path(file.filename or "doc").suffix.lower() or ".bin"
@@ -65,6 +83,9 @@ async def upload_document(
         session.add(doc)
         await session.commit()
 
+    increment_daily_count()
+    record_upload()
+
     # Schedule the pipeline via asyncio.create_task instead of BackgroundTasks
     # to ensure async functions run reliably in the event loop.
     task = asyncio.create_task(process_document(doc_id, dest))
@@ -80,6 +101,16 @@ async def upload_document(
         "status": "pending",
         "message": "Document uploaded. Processing in background.",
     }
+
+
+@app.get("/documents/cooldown")
+async def get_cooldown() -> dict:
+    """Return how many seconds remain before the next upload is allowed.
+
+    Declared BEFORE /documents/{doc_id}: FastAPI matches routes in definition
+    order, so if this came after, "cooldown" would be captured as a doc_id.
+    """
+    return {"cooldown_remaining": cooldown_remaining()}
 
 
 @app.get("/documents/{doc_id}")

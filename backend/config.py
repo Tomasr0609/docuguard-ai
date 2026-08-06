@@ -10,10 +10,14 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    llm_provider: str = "ollama"  # "ollama" | "anthropic"
+    llm_provider: str = "ollama"  # "ollama" | "anthropic" | "gemini"
     anthropic_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-flash-lite-latest"
+    daily_request_limit: int = 150  # 0 means unlimited
+    upload_cooldown_seconds: int = 60  # 0 disables the upload cooldown
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./docuguard.db"

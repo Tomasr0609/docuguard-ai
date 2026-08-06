@@ -1,5 +1,6 @@
 """Streamlit page: Document reports list and detail."""
 import os
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -7,6 +8,10 @@ import httpx
 import pandas as pd
 
 API_BASE = os.environ.get("DOCUGUARD_API_URL", "http://127.0.0.1:8000")
+
+# Cada cuántos segundos se re-consulta el backend mientras el documento
+# sigue en pending/processing.
+AUTO_REFRESH_SECONDS = 4
 
 
 def _api_url(path: str) -> str:
@@ -39,7 +44,14 @@ doc_labels = [
     for d in docs
 ]
 
-selected_label = st.selectbox("Seleccionar documento", doc_labels)
+# Si venimos recién de subir un documento (app.py guardó el doc_id en
+# session_state), preseleccionarlo automáticamente en el dropdown.
+default_index = 0
+last_uploaded = st.session_state.get("last_uploaded_doc_id")
+if last_uploaded and last_uploaded in doc_ids:
+    default_index = doc_ids.index(last_uploaded)
+
+selected_label = st.selectbox("Seleccionar documento", doc_labels, index=default_index)
 selected_idx = doc_labels.index(selected_label)
 selected_doc = docs[selected_idx]
 doc_id = selected_doc["doc_id"]
@@ -74,6 +86,17 @@ else:
     st.markdown(f"**Tiempo de procesamiento:** {tiempo} ms" if tiempo is not None else "**Tiempo de procesamiento:** —")
     costo = detail.get("total_cost_usd")
     st.markdown(f"**Costo estimado:** ${costo:.4f} USD" if costo is not None else "**Costo estimado:** —")
+
+# --- Auto-refresh mientras el documento sigue procesándose -----------------
+# Se ubica DESPUÉS de mostrar el estado actual, para que la persona vea
+# el "pending"/"processing" en pantalla antes de que dispare el próximo
+# refresh. Solo se activa cuando corresponde, así no recarga documentos
+# ya terminados.
+if status in ("pending", "processing"):
+    with st.spinner(f"Actualizando estado automáticamente cada {AUTO_REFRESH_SECONDS}s..."):
+        time.sleep(AUTO_REFRESH_SECONDS)
+    st.rerun()
+# -----------------------------------------------------------------------------
 
 # Findings
 st.subheader("Hallazgos")
