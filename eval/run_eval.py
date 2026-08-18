@@ -249,8 +249,19 @@ def generate_report(metrics: dict[str, Any], output_path: Path) -> str:
         for doc in metrics["per_doc"]:
             lines.append(f"")
             lines.append(f"### {doc['doc_id']} ({doc.get('doc_type', '?')})")
-            lines.append(f"- Risk: {doc.get('risk_level', 'N/A')}")
-            lines.append(f"- Findings: {len(doc.get('findings', []))}")
+            lines.append(
+                f"- Risk: {doc.get('risk_level', 'N/A')} "
+                f"(esperado: {doc.get('gt_risk_level', 'N/A')})"
+            )
+            lines.append(
+                f"- Recall: {doc.get('finding_recall', 'N/A')} | "
+                f"Precision: {doc.get('finding_precision', 'N/A')} | "
+                f"Severity acc: {doc.get('severity_accuracy', 'N/A')}"
+            )
+            expected_types = [f.get("type") for f in doc.get("expected_findings", [])]
+            detected_types = [f.get("type") for f in doc.get("findings", [])]
+            lines.append(f"- Esperados ({len(expected_types)}): {expected_types}")
+            lines.append(f"- Detectados ({len(detected_types)}): {detected_types}")
 
     report = "\n".join(lines)
     output_path.write_text(report, encoding="utf-8")

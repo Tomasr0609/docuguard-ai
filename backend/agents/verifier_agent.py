@@ -18,6 +18,46 @@ _VALID_TYPES_BY_DOC_TYPE: dict[str, set[str]] = {
     "invoice": {"amount_inconsistency", "missing_required_fields"},
 }
 
+# Keywords por tipo de finding, usadas tanto para construir la query RAG
+# (Fix de recall) como para el filtro de coherencia temática. Vive a nivel de
+# módulo para no duplicarla entre ambas funciones.
+_TYPE_KEYWORDS: dict[str, list[str]] = {
+    "amount_inconsistency": ["monto", "total", "subtotal", "iva", "factura", "cobro", "precio"],
+    "excessive_interest": ["interes", "moratorio", "tasa", "mensual"],
+    "missing_jurisdiction": ["jurisdiccion", "tribunal", "legal", "litigio", "ley"],
+    "missing_required_fields": ["falta", "requisito", "campo", "obligatorio"],
+    "missing_standard_exclusions": ["exclusion", "excluye", "exceptua", "no aplica"],
+    "missing_termination_clause": ["terminacion", "rescicion", "cancelacion", "finalizacion"],
+    "missing_termination_notice": ["notificacion", "preaviso", "aviso", "notificar"],
+    "no_cap_liability": ["responsabilidad", "limite", "maximo", "tope", "indemnizacion"],
+    "no_data_protection": ["datos", "proteccion", "privacidad", "gdpr", "personal"],
+    "overbroad_confidentiality": ["confidencial", "secreto", "divulgacion"],
+    "penalty_ambiguous": ["penalizacion", "sancion", "mora", "ambiguo", "penal",
+                          "criterio", "discrecion", "unilateral", "interes"],
+    "perpetual_confidentiality": ["confidencial", "perpetuo", "indefinido", "permanente", "vigencia"],
+    "unfavorable_penalty": ["penalizacion", "sancion", "mora", "excesivo", "desproporcionado"],
+    "unusual_jurisdiction": ["jurisdiccion", "tribunal", "competencia", "atipico", "inusual"],
+}
+
+
+def _build_rag_query(doc_type: str) -> str:
+    """Construye la query de retrieval a partir de los tipos de finding válidos
+    para este doc_type, para que el contexto RAG cubra semánticamente todos los
+    temas que el verifier podría necesitar evaluar."""
+    valid_types = _VALID_TYPES_BY_DOC_TYPE.get(doc_type)
+    if not valid_types:
+        return "clausulas estandar obligaciones contractuales"
+
+    terms: set[str] = set()
+    for t in valid_types:
+        terms.update(_TYPE_KEYWORDS.get(t, []))
+
+    if not terms:
+        return "clausulas estandar obligaciones contractuales"
+
+    return " ".join(sorted(terms))
+
+
 VERIFIER_SYSTEM_PROMPT = f"""Eres un verificador de cumplimiento documental. Tu tarea es comparar el texto de un documento contra las cláusulas de referencia (corpus normativo) proporcionadas y detectar desviaciones, riesgos o cláusulas problemáticas.
 
 === REGLAS DE FUNDAMENTACIÓN (OBLIGATORIAS) ===
@@ -76,15 +116,12 @@ async def verifier_agent(state: AgentState) -> dict:
     if not raw_text or len(raw_text.strip()) < 20:
         return {"errors": [f"Document {doc_id} has insufficient text for verification"]}
 
-    # Build a RAG context query based on the document type
-    query_hints = {
-        "contract": "clausula de terminacion penalizacion jurisdiccion incumplimiento",
-        "nda": "confidencialidad periodo vigencia exclusiones informacion",
-        "invoice": "factura requisitos iva subtotal total datos obligatorios",
-        "unknown": "clausulas estandar obligaciones contractuales",
-    }
-    query = query_hints.get(doc_type, query_hints["unknown"])
-    context = retrieve_context(query, k=4, max_chars=4000)
+    # Build a RAG context query from the valid finding types for this doc_type.
+    # This guarantees the reference clauses for ALL relevant topics (data
+    # protection, liability cap, termination notice, ...) reach the LLM context,
+    # instead of a hand-written query that could omit them.
+    query = _build_rag_query(doc_type)
+    context = retrieve_context(query, k=6, max_chars=5000)
 
     valid_types_str = ""
     if doc_type in _VALID_TYPES_BY_DOC_TYPE:
@@ -167,24 +204,8 @@ async def verifier_agent(state: AgentState) -> dict:
         else:
             validated.append(f)
 
-    # Thematic coherence filter: verify snippet content matches finding type
-    _TYPE_KEYWORDS: dict[str, list[str]] = {
-        "amount_inconsistency": ["monto", "total", "subtotal", "iva", "factura", "cobro", "precio"],
-        "excessive_interest": ["interes", "moratorio", "tasa", "mensual"],
-        "missing_jurisdiction": ["jurisdiccion", "tribunal", "legal", "litigio", "ley"],
-        "missing_required_fields": ["falta", "requisito", "campo", "obligatorio"],
-        "missing_standard_exclusions": ["exclusion", "excluye", "exceptua", "no aplica"],
-        "missing_termination_clause": ["terminacion", "rescicion", "cancelacion", "finalizacion"],
-        "missing_termination_notice": ["notificacion", "preaviso", "aviso", "notificar"],
-        "no_cap_liability": ["responsabilidad", "limite", "maximo", "tope", "indemnizacion"],
-        "no_data_protection": ["datos", "proteccion", "privacidad", "gdpr", "personal"],
-        "overbroad_confidentiality": ["confidencial", "secreto", "divulgacion"],
-        "penalty_ambiguous": ["penalizacion", "sancion", "mora", "ambiguo", "penal"],
-        "perpetual_confidentiality": ["confidencial", "perpetuo", "indefinido", "permanente", "vigencia"],
-        "unfavorable_penalty": ["penalizacion", "sancion", "mora", "excesivo", "desproporcionado"],
-        "unusual_jurisdiction": ["jurisdiccion", "tribunal", "competencia", "atipico", "inusual"],
-    }
-
+    # Thematic coherence filter: verify snippet content matches finding type.
+    # Uses the module-level _TYPE_KEYWORDS (shared with _build_rag_query).
     coherent = []
     for f in validated:
         ftype = f.get("type", "")

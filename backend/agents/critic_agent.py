@@ -18,6 +18,7 @@ Reglas:
 - Penalizaciones > 5% mensual sin tope -> high
 - Intereses moratorios > 3% mensual -> medium
 - Ausencia de cláusula de terminación -> high
+- Ausencia total de cláusula de jurisdicción -> medium
 - Jurisdicción atípica pero presente -> low
 - Confidencialidad perpetua -> high
 - Omisión de exclusiones estándar en NDA -> medium

@@ -73,7 +73,6 @@ st.sidebar.markdown(
     """
 - **Subir documento** ← estás acá
 - Reportes
-- Evaluación
 - Observabilidad
 """
 )

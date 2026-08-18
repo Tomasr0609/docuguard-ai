@@ -110,25 +110,40 @@ def compute_all_metrics(
             "severity_accuracy": 0.0,
             "risk_level_accuracy": 0.0,
             "extraction_accuracy": 0.0,
+            "per_doc": [],
         }
+
+    per_doc: list[dict] = []
 
     for i in range(doc_count):
         gt = ground_truth[i]
         pr = pipeline_results[i]
 
-        total_finding_recall += compute_finding_recall(
-            gt.get("findings", []), pr.get("findings", [])
-        )
-        total_finding_precision += compute_finding_precision(
-            gt.get("findings", []), pr.get("findings", [])
-        )
-        total_severity_accuracy += compute_severity_accuracy(
-            gt.get("findings", []), pr.get("findings", [])
-        )
-        total_risk_accuracy += compute_risk_level_accuracy(
-            gt.get("risk_level"), pr.get("risk_level")
-        )
-        total_extraction_accuracy += compute_extraction_accuracy(gt, pr)
+        recall = compute_finding_recall(gt.get("findings", []), pr.get("findings", []))
+        precision = compute_finding_precision(gt.get("findings", []), pr.get("findings", []))
+        severity_acc = compute_severity_accuracy(gt.get("findings", []), pr.get("findings", []))
+        risk_acc = compute_risk_level_accuracy(gt.get("risk_level"), pr.get("risk_level"))
+        extraction_acc = compute_extraction_accuracy(gt, pr)
+
+        total_finding_recall += recall
+        total_finding_precision += precision
+        total_severity_accuracy += severity_acc
+        total_risk_accuracy += risk_acc
+        total_extraction_accuracy += extraction_acc
+
+        per_doc.append({
+            "doc_id": gt.get("doc_id", pr.get("doc_id", f"doc_{i}")),
+            "doc_type": pr.get("doc_type", gt.get("doc_type", "unknown")),
+            "risk_level": pr.get("risk_level", "none"),
+            "gt_risk_level": gt.get("risk_level", "none"),
+            "findings": pr.get("findings", []),
+            "expected_findings": gt.get("findings", []),
+            "finding_recall": recall,
+            "finding_precision": precision,
+            "severity_accuracy": severity_acc,
+            "risk_level_accuracy": risk_acc,
+            "extraction_accuracy": extraction_acc,
+        })
 
     return {
         "status": "ok",
@@ -138,4 +153,5 @@ def compute_all_metrics(
         "severity_accuracy": round(total_severity_accuracy / doc_count, 4),
         "risk_level_accuracy": round(total_risk_accuracy / doc_count, 4),
         "extraction_accuracy": round(total_extraction_accuracy / doc_count, 4),
+        "per_doc": per_doc,
     }
