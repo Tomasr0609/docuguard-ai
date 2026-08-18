@@ -1,9 +1,16 @@
+import logging
 import os
+import socket
+import threading
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import streamlit as st
 import httpx
+import uvicorn
+
+logger = logging.getLogger(__name__)
 
 API_BASE = os.environ.get("DOCUGUARD_API_URL", "http://127.0.0.1:8000")
 UPLOAD_COOLDOWN_SECONDS = 60
@@ -45,6 +52,89 @@ def _goto_reportes() -> None:
     st.switch_page("pages/1_Reportes.py")
 
 
+# ---------------------------------------------------------------------------
+# Backend auto-start
+#
+# Streamlit Community Cloud solo ejecuta `streamlit run app.py` (no permite
+# levantar uvicorn en una terminal aparte), así que arrancamos el backend de
+# FastAPI en un hilo en segundo plano la primera vez que se carga la app.
+#
+# Singleton: la variable a nivel de módulo persiste entre reruns porque
+# Streamlit re-ejecuta app.py dentro del MISMO proceso Python. Una vez
+# arrancado (o detectado como ya corriendo), nunca se vuelve a intentar.
+#
+# Compatibilidad local: si el puerto ya está ocupado (uvicorn manual en la
+# segunda terminal), lo detectamos y no duplicamos el backend.
+# ---------------------------------------------------------------------------
+_backend_started = False
+_backend_lock = threading.Lock()
+
+
+def _backend_port() -> int:
+    try:
+        return urlparse(API_BASE).port or 8000
+    except ValueError:
+        return 8000
+
+
+def _port_in_use(port: int, host: str = "127.0.0.1") -> bool:
+    """True si ya hay algo escuchando en host:port (bind falla).
+
+    NO usamos SO_REUSEADDR: en Windows ese flag permite que dos sockets se
+    bindeen al mismo puerto (uvicorn sí lo setea), lo que haría que esta
+    detección dijera "puerto libre" con uvicorn ya corriendo. Un bind+close
+    limpio no deja TIME_WAIT, así que no bloquea el arranque posterior.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind((host, port))
+        except OSError:
+            return True
+    return False
+
+
+def _run_backend() -> None:
+    uvicorn.run(
+        "backend.api.main:app",
+        host="127.0.0.1",
+        port=_backend_port(),
+        log_level="warning",
+        reload=False,
+    )
+
+
+def _ensure_backend(timeout: float = 10.0) -> None:
+    """Arranca el backend una sola vez; no-op si ya está corriendo."""
+    global _backend_started
+    with _backend_lock:
+        if _backend_started:
+            return
+        _backend_started = True
+
+        port = _backend_port()
+        if _port_in_use(port):
+            logger.info(
+                "Puerto %s ya ocupado — asumimos uvicorn local corriendo y no "
+                "arrancamos un segundo backend.", port,
+            )
+            return
+
+        logger.info("Arrancando backend de FastAPI en el puerto %s (hilo daemon)...", port)
+        threading.Thread(
+            target=_run_backend,
+            name="docuguard-backend",
+            daemon=True,
+        ).start()
+
+        # Esperamos a que el hilo haya bindeado el puerto para que el health
+        # check de la primera carga no pegue contra un backend todavía dormido.
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if _port_in_use(port):
+                return
+            time.sleep(0.2)
+
+
 st.set_page_config(
     page_title="DocuGuard AI Lite",
     page_icon="",
@@ -53,6 +143,11 @@ st.set_page_config(
 
 st.title("DocuGuard AI Lite")
 st.markdown("Verificación de cumplimiento documental con IA multi-agente")
+
+# Aseguramos que el backend esté corriendo antes del health check. En
+# Streamlit Community Cloud este es el único momento en que el backend puede
+# arrancar (no hay uvicorn manual); localmente es un no-op si ya está levantado.
+_ensure_backend()
 
 # Check API health
 try:
